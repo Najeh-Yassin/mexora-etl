@@ -1,0 +1,11 @@
+code_ville,nom_ville_standard,province,region_admin,zone_geo,population,code_postal
+V01,Tanger,Tanger-Assilah,Tanger-Tétouan-Al Hoceima,Nord,1000000,90000
+V02,Casablanca,Casablanca,Casablanca-Settat,Centre,3500000,20000
+V03,Rabat,Rabat,Rabat-Salé-Kénitra,Centre,600000,10000
+V04,Fès,Fès,Fès-Meknès,Centre,1100000,30000
+V05,Marrakech,Marrakech,Marrakech-Safi,Sud,900000,40000
+V06,Agadir,Agadir-Ida-Ou Tanane,Souss-Massa,Sud,500000,80000
+V07,Oujda,Oujda-Angad,Oriental,Est,500000,60000
+V08,Meknès,Meknès,Fès-Meknès,Centre,600000,50000
+V09,Kénitra,Kénitra,Rabat-Salé-Kénitra,Centre,400000,14000
+V10,Tétouan,Tétouan,Tanger-Tétouan-Al Hoceima,Nord,400000,93000
