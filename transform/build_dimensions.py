@@ -1,0 +1,3 @@
+"""
+Construction des dimensions.
+"""

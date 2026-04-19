@@ -1,0 +1,3 @@
+"""
+Paramètres de connexion, chemins.
+"""

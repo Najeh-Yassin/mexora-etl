@@ -1,0 +1,3 @@
+"""
+Nettoyage des commandes.
+"""
