@@ -637,3 +637,28 @@ DETAIL:  Key (id_date)=(20200101) already exists.
 2026-04-22 17:30:48,947 - INFO - Table fait_ventes chargée avec succès.
 2026-04-22 17:30:48,947 - INFO - === TOUTES LES DONNÉES ONT ÉTÉ CHARGÉES DANS LE DWH ===
 2026-04-22 17:30:48,949 - INFO - === PIPELINE TERMINÉ AVEC SUCCÈS EN 14.12 SECONDES ===
+2026-04-22 20:05:38,273 - INFO - === DÉMARRAGE DU PIPELINE ETL MEXORA ANALYTICS ===
+2026-04-22 20:05:38,283 - INFO - Début de l'extraction des données...
+2026-04-22 20:05:41,186 - INFO - Commandes extraites : 51500 lignes.
+2026-04-22 20:05:41,196 - INFO - Clients extraits : 1040 lignes.
+2026-04-22 20:05:41,239 - INFO - Produits extraits : 100 lignes.
+2026-04-22 20:05:41,518 - INFO - Régions extraites : 10 lignes.
+2026-04-22 20:05:41,520 - INFO - Nettoyage des commandes...
+2026-04-22 20:05:41,947 - INFO - Nettoyage terminé. Lignes valides : 49015
+2026-04-22 20:05:41,950 - ERROR - !!! CRASH DU PIPELINE : clean_clients() takes 1 positional argument but 2 were given
+2026-04-22 20:08:02,478 - INFO - === DÉMARRAGE DU PIPELINE ETL MEXORA ANALYTICS ===
+2026-04-22 20:08:02,481 - INFO - Début de l'extraction des données...
+2026-04-22 20:08:04,505 - INFO - Commandes extraites : 51500 lignes.
+2026-04-22 20:08:04,515 - INFO - Clients extraits : 1040 lignes.
+2026-04-22 20:08:04,520 - INFO - Produits extraits : 100 lignes.
+2026-04-22 20:08:04,525 - INFO - Régions extraites : 10 lignes.
+2026-04-22 20:08:04,526 - INFO - Nettoyage des commandes...
+2026-04-22 20:08:04,824 - INFO - Nettoyage terminé. Lignes valides : 49015
+2026-04-22 20:08:04,827 - INFO - Nettoyage des clients et calcul des segments...
+2026-04-22 20:08:04,904 - INFO - Clients après nettoyage et segmentation : 943 lignes.
+2026-04-22 20:08:04,912 - INFO - Nettoyage des produits...
+2026-04-22 20:08:04,919 - INFO - Produits après nettoyage : 100 lignes.
+2026-04-22 20:08:04,920 - INFO - --- CONSTRUCTION DU MODÈLE EN ÉTOILE ---
+2026-04-22 20:08:04,971 - INFO - Calcul de la segmentation Gold/Silver/Bronze...
+2026-04-22 20:08:05,656 - INFO - Génération de la dimension Temps avec périodes Ramadan...
+2026-04-22 20:08:05,806 - INFO - === TEST LOGIQUE TERMINÉ EN 3.33 SECONDES ===

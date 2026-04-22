@@ -28,11 +28,11 @@ def main():
         star_schema = build_dimensions(cleaned_data)
         
         # 4. CHARGEMENT
-        load_data(star_schema)
-        
-        end_time = time.time()
-        duration = round(end_time - start_time, 2)
-        logger.info(f"=== PIPELINE TERMINÉ AVEC SUCCÈS EN {duration} SECONDES ===")
+       ## load_data(star_schema)
+        #
+        #end_time = time.time()
+        #duration = round(end_time - start_time, 2)
+        #logger.info(f"=== PIPELINE TERMINÉ AVEC SUCCÈS EN {duration} SECONDES ===")
         
     except Exception as e:
         logger.error(f"!!! CRASH DU PIPELINE : {e}")

@@ -3,8 +3,6 @@ import logging
 
 def clean_commandes(df):
     logging.info("Nettoyage des commandes...")
-    
-    # On crée une copie propre pour éviter les erreurs de manipulation
     df = df.copy()
 
     # R1 — Suppression des doublons
@@ -14,19 +12,29 @@ def clean_commandes(df):
     df["date_commande"] = pd.to_datetime(df["date_commande"], errors='coerce')
     df = df.dropna(subset=["date_commande"])
 
-    # --- LA CORRECTION EST ICI ---
-    # On ne force PAS 'int'. On garde le texte (ex: LIV_094)
-    # On remplace les vides par 'INCONNU'
-    df["id_livreur"] = df["id_livreur"].fillna("INCONNU").astype(str)
-    # -----------------------------
+    # R3 — Harmonisation des noms de villes (Problèmes intentionnels : TNG, Tnja, tanger)
+    mapping_villes = {
+        'tng': 'Tanger', 'tnja': 'Tanger', 'tanger': 'Tanger', 'tng ': 'Tanger',
+        'casa': 'Casablanca', 'casablanca': 'Casablanca', 'kech': 'Marrakech',
+        'rabat': 'Rabat', 'fes': 'Fès', 'oujda': 'Oujda', 'agadir': 'Agadir'
+    }
+    # On nettoie la colonne ville_livraison
+    df['ville_livraison'] = df['ville_livraison'].str.strip().str.lower().replace(mapping_villes)
+    # On met la première lettre en majuscule pour le reste
+    df['ville_livraison'] = df['ville_livraison'].str.title()
 
-    # Conversion propre des prix et quantités en nombres (si possible)
+    # R7 — Gestion id_livreur
+    df["id_livreur"] = df["id_livreur"].fillna("INCONNU").astype(str)
+
+    # R5 & R6 — Quantités et prix (Conversion et filtre)
     df["quantite"] = pd.to_numeric(df["quantite"], errors='coerce').fillna(0)
     df["prix_unitaire"] = pd.to_numeric(df["prix_unitaire"], errors='coerce').fillna(0)
+    df = df[(df["quantite"] > 0) & (df["prix_unitaire"] > 0)]
 
-    # R5 & R6 — Suppression des erreurs de saisie
-    df = df[df["quantite"] > 0]
-    df = df[df["prix_unitaire"] > 0]
+    # Standardisation des statuts pour éviter les erreurs SQL
+    df['statut'] = df['statut'].str.lower().str.strip().replace({
+        'ok': 'en_cours', 'done': 'livré', 'livre': 'livré', 'ko': 'annulé'
+    })
 
     logging.info(f"Nettoyage terminé. Lignes valides : {len(df)}")
     return df
