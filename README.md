@@ -1,18 +1,22 @@
-**Mexora Analytics — Pipeline ETL & Data Warehouse**
+# Mexora Analytics — Pipeline ETL & Data Warehouse
+
 Ce projet constitue le système décisionnel de Mexora, une marketplace e-commerce basée à Tanger. Il automatise l'extraction, le nettoyage et le chargement des données opérationnelles vers un entrepôt de données (Data Warehouse) sous PostgreSQL.
 
-**📋 Présentation du Projet**
-L'objectif est de transformer des données brutes imparfaites (doublons, formats de dates mixtes, erreurs de saisie) en un modèle dimensionnel (Schéma en étoile) permettant des analyses rapides sur :
-L'évolution du Chiffre d'Affaires par région.
-Le comportement des segments clients (Gold, Silver, Bronze).
-L'impact des périodes spécifiques comme le Ramadan.
+## 📋 Présentation
 
-**🛠️ Stack Technique**
-Langage : Python 3.11+
-Manipulation de données : Pandas
-Base de données : PostgreSQL 15+
-ORM / Connexion : SQLAlchemy, Psycopg2
-Versioning : Git & GitHub
+L'objectif est de transformer des données brutes imparfaites (doublons, formats de dates mixtes, erreurs de saisie) en un modèle dimensionnel (schéma en étoile) permettant des analyses rapides sur :
+- l’évolution du chiffre d’affaires par région,
+- le comportement des segments clients (Gold, Silver, Bronze),
+- l’impact des périodes spécifiques comme le Ramadan.
+
+## 🛠️ Stack technique
+
+- **Langage** : Python 3.11+
+- **Manipulation de données** : Pandas
+- **Base de données** : PostgreSQL 15+
+- **ORM / Connexion** : SQLAlchemy, Psycopg2
+- **Versioning** : Git & GitHub
+
 
 **📂 Structure du Projet Python**
 Le code est organisé de façon modulaire conformément aux standards de la Data Engineering :
@@ -71,6 +75,6 @@ Standardisation : Harmonisation des villes marocaines (TNG -> Tanger).
 Validation : Filtrage des prix négatifs et des clients de moins de 16 ans.
 Calcul métier : Segmentation automatique des clients basée sur le CA des 12 derniers mois.
 Historisation : Préparation des dimensions pour le SCD Type 2.
-
+Najeh Yassin
 ABAJJA MOHAMMED
 Date : Avril 2026

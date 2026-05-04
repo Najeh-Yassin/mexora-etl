@@ -1,65 +1,61 @@
 # 📊 Rapport de Transformations — Mexora Analytics
 
-Ce document récapitule l'ensemble des règles métier appliquées lors de la phase de transformation (**Transform**) du pipeline ETL. L'objectif est de garantir que les données chargées dans le Data Warehouse sont propres, cohérentes et exploitables pour l'analyse décisionnelle.
+Ce document récapitule l'ensemble des règles métier appliquées lors de la phase de transformation (**Transform**) du pipeline ETL, conformément à l’énoncé. Chaque règle est documentée avec son impact (nombre de lignes affectées) issu des logs.
 
 ---
 
 ## 1. Transformations des Commandes (`commandes_mexora.csv`)
 
-La table de faits repose sur l'intégrité de ces données. Nous avons traité les problèmes intentionnels de saisie et de formatage.
+| Règle | Description Métier | Logique / Code | Lignes affectées |
+|-------|-------------------|----------------|------------------|
+| **R1** | Suppression des doublons sur `id_commande` (conserver la dernière) | `df.drop_duplicates(subset=['id_commande'], keep='last')` | ~1 545 |
+| **R2** | Standardisation des dates (format YYYY-MM-DD) | `pd.to_datetime(errors='coerce', format='mixed')` + suppression des `NaT` | ~300 dates invalides |
+| **R3** | Harmonisation des villes **via le référentiel** `regions_maroc.csv` | Chargement du CSV, création d’un dictionnaire `{variante: nom_standard}` et mapping | 100% des villes |
+| **R4** | Standardisation des statuts (incluant `retourné`) | Mapping : `{livré, annulé, en_cours, retourné}` ; les non-reconnus → `inconnu` | Tous les statuts |
+| **R5** | Suppression des lignes avec `quantite <= 0` | `df = df[df['quantite'] > 0]` | ~380 |
+| **R6** | Suppression des lignes avec `prix_unitaire = 0` (commandes test) | `df = df[df['prix_unitaire'] > 0]` | ~260 |
+| **R7** | Remplacement des `id_livreur` manquants par `-1` | `df['id_livreur'].fillna('-1')` | 7% des lignes |
 
-| Règle | Description Métier | Logique / Code Python | Impact (Lignes affectées) |
-| :--- | :--- | :--- | :--- |
-| **R1** | Suppression des doublons | `drop_duplicates(subset=['id_commande'], keep='last')` | ~1 545 doublons supprimés |
-| **R2** | Standardisation des dates | `pd.to_datetime(errors='coerce')` + `dropna()` | ~300 dates invalides rejetées |
-| **R3** | Harmonisation des villes | Mapping (ex: 'TNG', 'Tnja' -> 'Tanger') + `str.title()` | 100% des villes standardisées |
-| **R4** | Standardisation statuts | Mapping vers {livré, annulé, en_cours, retourné} | Tous les statuts harmonisés |
-| **R5** | Nettoyage quantités | Filtre strict : `df['quantite'] > 0` | ~380 erreurs de saisie exclues |
-| **R6** | Nettoyage prix | Filtre strict : `df['prix_unitaire'] > 0` | ~260 commandes tests supprimées |
-| **R7** | Livreurs manquants | Remplacement des valeurs `NaN` par `"INCONNU"` | 7% des lignes modifiées |
-
-> **Statistiques Finales :** 
-> - Lignes extraites : **51 500**  
-> - Lignes validées : **49 015**  
-> - Taux de rejet : **4.8%**
+> **Statistiques finales :**  
+> - Extraites : **51 500**  
+> - Validées : **49 015**  
+> - Taux de rejet : **4,8 %**
 
 ---
 
 ## 2. Transformations des Clients (`clients_mexora.csv`)
 
-Le nettoyage des clients permet une segmentation précise et une analyse démographique fiable.
+| Règle | Description Métier | Logique / Code | Lignes affectées |
+|-------|-------------------|----------------|------------------|
+| **R1** | Déduplication sur email normalisé | `df.sort_values('date_inscription').drop_duplicates(subset=['email_norm'])` | ~47 doublons |
+| **R2** | Standardisation du sexe (cible : `m` / `f` / `inconnu`) | Mapping dictionnaire | 100% des lignes |
+| **R3** | Validation âge (entre 16 et 100 ans) ; calcul de `tranche_age` | `age = (today - date_naissance).days // 365` ; filtrage + catégorisation | ~33 exclus |
+| **R4** | Validation du format email | Regex `^[a-zA-Z0-9._%+-]+@...` | ~17 emails invalides mis à `NULL` |
+| **R5** | ~~Segmentation client~~ | **Déplacée dans `build_dim_client`** (calcul basé sur CA 12 mois, Gold/Silver/Bronze) | – |
 
-| Règle | Description Métier | Logique / Code Python | Impact (Lignes affectées) |
-| :--- | :--- | :--- | :--- |
-| **R1** | Déduplication Clients | `drop_duplicates(subset=['email'], keep='last')` | ~47 doublons supprimés |
-| **R2** | Standardisation Sexe | Mapping {1: 'm', 0: 'f', 'homme': 'm', ...} | Tous les genres normalisés |
-| **R3** | Validation Âge | Calcul `Année_Actuelle - Année_Naissance`. Filtre [16 - 100 ans] | ~33 clients hors-limites rejetés |
-| **R4** | Validation Email | Regex : `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$` | ~17 emails mal formatés rejetés |
-| **R5** | **Segmentation RFM** | CA Cumulé (Livré) : Gold (≥15k), Silver (≥5k), Bronze | 100% des clients segmentés |
+> **Note :** La segmentation n’est plus effectuée dans le nettoyage pour respecter la séparation des responsabilités. Elle est calculée **une seule fois** lors de la construction de la dimension client.
 
-> **Statistiques Finales :** 
-> - Clients extraits : **1 040**  
-> - Clients validés : **943**
+> **Statistiques finales :**  
+> - Extraits : **1 040**  
+> - Validés : **943**
 
 ---
 
 ## 3. Transformations des Produits (`produits_mexora.json`)
 
-Préparation du catalogue produit pour la gestion de l'historique (SCD).
-
-| Règle | Description Métier | Logique / Code Python | Impact |
-| :--- | :--- | :--- | :--- |
-| **R1** | Casse catégories | `str.strip().str.capitalize()` | Uniformisation des catégories |
-| **R2** | Initialisation SCD 2 | Ajout des colonnes `date_debut`, `date_fin`, `est_actif` | Prêt pour l'historisation |
-| **R3** | Mapping Prix | Renommage `prix_catalogue` en `prix_standard` | Alignement avec le schéma SQL |
+| Règle | Description | Logique | Impact |
+|-------|-------------|---------|--------|
+| **R1** | Normalisation de la casse des catégories | `str.strip().str.capitalize()` | Uniformisation |
+| **R2** | Gestion des prix `NULL` → 0 | `fillna(0)` | ~5 produits |
+| **R3** | Initialisation des colonnes SCD Type 2 | `date_debut = today`, `date_fin = '9999-12-31'`, `est_actif = True` | Tous les produits |
 
 ---
 
 ## 4. Enrichissement & Modélisation (Star Schema)
 
-Outre le nettoyage, le pipeline effectue des jointures complexes pour passer d'un modèle transactionnel à un modèle décisionnel :
+- **Dimension temporelle** : génération automatique d’un calendrier (2020–2026) avec `periode_ramadan` et `est_ferie_maroc`.
+- **Calcul des mesures** : `montant_ht = quantite * prix_unitaire`, `montant_ttc = montant_ht * 1,20`.
+- **Surrogate keys** : remplacement des identifiants métiers (`id_client_nk`, etc.) par des clés auto-incrémentées.
+- **Segmentation client** : calculée sur le CA des 12 derniers mois (règles Mexora : ≥15 000 MAD → Gold, ≥5 000 → Silver, sinon Bronze).
 
-1. **Mapping Surrogate Keys (SK) :** Remplacement des identifiants métiers (`id_client_nk`) par des clés techniques numériques dans la table de faits.
-2. **Dimension Temporelle :** Génération automatique d'un calendrier incluant l'attribut `periode_ramadan` (basé sur les dates réelles 2023-2025).
-3. **Calcul des Faits :** Calcul automatique du `montant_ht` et du `montant_ttc` (TVA 20%) pour chaque ligne de vente.
-
+> Toutes ces transformations sont tracées dans les logs (`logs/etl_*.log`) avec le détail des lignes affectées par règle.

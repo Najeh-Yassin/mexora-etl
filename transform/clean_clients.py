@@ -2,60 +2,52 @@ import pandas as pd
 import re
 import logging
 from datetime import date
-from utils.logger import setup_logger
 
-logger = setup_logger()
+logger = logging.getLogger(__name__)
 
-def validate_email(email):
-    """Simple regex pour valider l'email."""
-    if pd.isna(email): return False
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return bool(re.match(pattern, str(email)))
-
-def clean_clients(df, df_commandes):
+def clean_clients(df, df_commandes=None):
     """
-    Nettoyage complet des clients (R1-R5).
+    Nettoyage des clients (R1 à R4).
+    La segmentation client (R5) est déplacée dans build_dim_client pour éviter redondance.
     """
-    logger.info("Nettoyage des clients et calcul des segments...")
+    logger.info("Nettoyage des clients...")
     df = df.copy()
-    
-    # R1 & R4 — Email (Validation format + Déduplication)
-    df = df[df["email"].apply(validate_email)]
-    df = df.drop_duplicates(subset=["email"], keep='last')
-    
-    # R2 — Normalisation du sexe (m/f/inconnu)
-    if "sexe" in df.columns:
-        df["sexe"] = df["sexe"].str.lower().map({
-            "homme": "m", "femme": "f", "m": "m", "f": "f", "1": "m", "0": "f"
-        }).fillna("inconnu")
+    initial = len(df)
 
-    # R3 — Validation des dates de naissance (16 - 100 ans)
+    # R1 — Déduplication sur email normalisé
+    df['email_norm'] = df['email'].str.lower().str.strip()
+    avant = len(df)
+    df = df.sort_values('date_inscription', ascending=False).drop_duplicates(subset=['email_norm'], keep='first')
+    logger.info(f"R1 déduplication email : {avant - len(df)} doublons supprimés")
+    df.drop(columns=['email_norm'], inplace=True)
+
+    # R2 — Standardisation du sexe
+    mapping_sexe = {
+        'm': 'm', 'f': 'f', '1': 'm', '0': 'f',
+        'homme': 'm', 'femme': 'f', 'male': 'm', 'female': 'f', 'h': 'm'
+    }
+    if 'sexe' in df.columns:
+        avant_sexe = df['sexe'].nunique()
+        df['sexe'] = df['sexe'].astype(str).str.lower().str.strip().map(mapping_sexe).fillna('inconnu')
+        logger.info(f"R2 sexe : {avant_sexe} valeurs d'origine → standardisé en m/f/inconnu")
+
+    # R3 — Validation des dates de naissance (âge entre 16 et 100 ans)
     df['date_naissance'] = pd.to_datetime(df['date_naissance'], errors='coerce')
-    today = date.today()
-    # Calcul de l'âge approximatif
-    df['age'] = df['date_naissance'].apply(lambda x: today.year - x.year if pd.notnull(x) else None)
-    # On filtre : on ne garde que les gens entre 16 et 100 ans (ou NaN si on veut être souple)
-    df = df[(df['age'].isna()) | ((df['age'] >= 16) & (df['age'] <= 100))]
-    
-    # R5 — CALCUL DE LA SEGMENTATION
-    # Calcul du CA total par client
-    df_cmd_valides = df_commandes.copy()
-    df_cmd_valides['ca'] = df_cmd_valides['quantite'].astype(float) * df_cmd_valides['prix_unitaire'].astype(float)
-    
-    # Segmentation basée sur le CA total (uniquement livrés)
-    ca_par_client = df_cmd_valides[df_cmd_valides['statut'].str.contains('livré|done', case=False, na=False)] \
-                    .groupby('id_client')['ca'].sum().reset_index()
-    
-    def definir_segment(ca):
-        if ca >= 15000: return 'Gold'
-        if ca >= 5000: return 'Silver'
-        return 'Bronze'
-    
-    ca_par_client['segment_client'] = ca_par_client['ca'].apply(definir_segment)
-    
-    # Fusion avec la table client
-    df = df.merge(ca_par_client[['id_client', 'segment_client']], on='id_client', how='left')
-    df['segment_client'] = df['segment_client'].fillna('Bronze')
+    today = pd.Timestamp(date.today())
+    df['age'] = (today - df['date_naissance']).dt.days // 365
+    ages_invalides = ((df['age'] < 16) | (df['age'] > 100)).sum()
+    df.loc[(df['age'] < 16) | (df['age'] > 100), 'date_naissance'] = pd.NaT
+    # Tranche d'âge
+    df['tranche_age'] = pd.cut(df['age'].fillna(0),
+                               bins=[0, 18, 25, 35, 45, 55, 65, 200],
+                               labels=['<18', '18-24', '25-34', '35-44', '45-54', '55-64', '65+'])
+    logger.info(f"R3 âge : {ages_invalides} lignes avec âge invalide (mis à NaT)")
 
-    logger.info(f"Clients après nettoyage et segmentation : {len(df)} lignes.")
+    # R4 — Validation email (format)
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    emails_invalides = ~df['email'].str.match(pattern, na=False)
+    df.loc[emails_invalides, 'email'] = None
+    logger.info(f"R4 email : {emails_invalides.sum()} emails invalides mis à NULL")
+
+    logger.info(f"Clients après nettoyage (sans segmentation) : {len(df)} lignes ({initial - len(df)} supprimées)")
     return df
