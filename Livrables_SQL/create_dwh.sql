@@ -8,7 +8,6 @@ CREATE SCHEMA IF NOT EXISTS reporting_mexora;
 -- 2. CRÉATION DES TABLES DE DIMENSIONS
 -- ==========================================================
 
--- Dimension Temps
 CREATE TABLE dwh_mexora.dim_temps (
     id_date           INTEGER PRIMARY KEY,
     jour              SMALLINT NOT NULL,
@@ -23,7 +22,6 @@ CREATE TABLE dwh_mexora.dim_temps (
     periode_ramadan   BOOLEAN DEFAULT FALSE
 );
 
--- Dimension Produit (SCD Type 2)
 CREATE TABLE dwh_mexora.dim_produit (
     id_produit_sk     SERIAL PRIMARY KEY,
     id_produit_nk     VARCHAR(20) NOT NULL,
@@ -39,7 +37,6 @@ CREATE TABLE dwh_mexora.dim_produit (
     est_actif         BOOLEAN NOT NULL DEFAULT TRUE
 );
 
--- Dimension Client
 CREATE TABLE dwh_mexora.dim_client (
     id_client_sk      SERIAL PRIMARY KEY,
     id_client_nk      VARCHAR(20) NOT NULL,
@@ -55,7 +52,6 @@ CREATE TABLE dwh_mexora.dim_client (
     est_actif         BOOLEAN NOT NULL DEFAULT TRUE
 );
 
--- Dimension Région
 CREATE TABLE dwh_mexora.dim_region (
     id_region         SERIAL PRIMARY KEY,
     ville             VARCHAR(100) NOT NULL,
@@ -65,7 +61,6 @@ CREATE TABLE dwh_mexora.dim_region (
     pays              VARCHAR(50) DEFAULT 'Maroc'
 );
 
--- Dimension Livreur
 CREATE TABLE dwh_mexora.dim_livreur (
     id_livreur        SERIAL PRIMARY KEY,
     id_livreur_nk     VARCHAR(20),
@@ -95,14 +90,14 @@ CREATE TABLE dwh_mexora.fait_ventes (
 );
 
 -- ==========================================================
--- 4. INDEXATION POUR LA PERFORMANCE
+-- 4. INDEXATION
 -- ==========================================================
 CREATE INDEX idx_fv_date    ON dwh_mexora.fait_ventes(id_date);
 CREATE INDEX idx_fv_produit ON dwh_mexora.fait_ventes(id_produit);
 CREATE INDEX idx_fv_client  ON dwh_mexora.fait_ventes(id_client);
 
 -- ==========================================================
--- 5. VUES MATÉRIALISÉES (REPORTING)
+-- 5. VUES MATÉRIALISÉES (LES 3 OBLIGATOIRES)
 -- ==========================================================
 
 -- Vue 1 : CA Mensuel
@@ -123,3 +118,15 @@ FROM dwh_mexora.fait_ventes f
 JOIN dwh_mexora.dim_temps t ON f.id_date = t.id_date
 JOIN dwh_mexora.dim_produit p ON f.id_produit = p.id_produit_sk
 GROUP BY 1,2,3 WITH DATA;
+
+-- Vue 3 : Performance Livreurs (Celle qui manquait)
+CREATE MATERIALIZED VIEW reporting_mexora.mv_performance_livreurs AS
+SELECT l.nom_livreur, l.zone_couverture, t.annee, t.mois,
+    COUNT(*) AS nb_livraisons,
+    AVG(f.delai_livraison_jours) AS delai_moyen_jours,
+    ROUND(COUNT(*) FILTER (WHERE f.delai_livraison_jours > 3) * 100.0 / NULLIF(COUNT(*), 0), 2) AS taux_retard_pct
+FROM dwh_mexora.fait_ventes f
+JOIN dwh_mexora.dim_livreur l ON f.id_livreur = l.id_livreur
+JOIN dwh_mexora.dim_temps t ON f.id_date = t.id_date
+WHERE f.statut_commande IN ('livré', 'retourné')
+GROUP BY 1,2,3,4 WITH DATA;

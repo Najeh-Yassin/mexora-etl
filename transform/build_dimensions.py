@@ -8,6 +8,8 @@ import pandas as pd
 import numpy as np
 import logging
 from datetime import date, timedelta
+from config.settings import DIM_TEMPS_DATE_DEBUT, DIM_TEMPS_DATE_FIN
+
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +29,18 @@ def _safe_str(series: pd.Series) -> pd.Series:
 # DIM_TEMPS
 # ──────────────────────────────────────────────────────────────────────────────
 
-def build_dim_temps(date_debut: str = "2020-01-01",
-                    date_fin: str   = "2026-12-31") -> pd.DataFrame:
+def build_dim_temps(date_debut: str = None, date_fin: str = None) -> pd.DataFrame:
     """
     Génère la dimension temporelle complète.
     id_date au format YYYYMMDD (INTEGER — clé primaire PostgreSQL).
+    Les dates par défaut sont lues depuis config/settings.py.
     """
+    # Utiliser les valeurs du fichier settings si non fournies
+    if date_debut is None:
+        date_debut = DIM_TEMPS_DATE_DEBUT
+    if date_fin is None:
+        date_fin = DIM_TEMPS_DATE_FIN
+
     dates = pd.date_range(start=date_debut, end=date_fin, freq="D")
 
     feries_maroc = {
@@ -48,6 +56,9 @@ def build_dim_temps(date_debut: str = "2020-01-01",
         # 2025
         "2025-01-01","2025-01-11","2025-05-01","2025-07-30",
         "2025-08-14","2025-11-06","2025-11-18",
+        # 2026 (si nécessaire)
+        "2026-01-01","2026-01-11","2026-05-01","2026-07-30",
+        "2026-08-14","2026-11-06","2026-11-18",
     }
 
     ramadan_periodes = [
@@ -55,6 +66,7 @@ def build_dim_temps(date_debut: str = "2020-01-01",
         ("2023-03-22", "2023-04-20"),
         ("2024-03-10", "2024-04-09"),
         ("2025-03-01", "2025-03-30"),
+        ("2026-02-18", "2026-03-19"),  # ajout pour couvrir jusqu'à 2026
     ]
 
     df = pd.DataFrame({
@@ -83,8 +95,6 @@ def build_dim_temps(date_debut: str = "2020-01-01",
         "libelle_jour", "libelle_mois", "est_weekend",
         "est_ferie_maroc", "periode_ramadan"
     ]]
-
-
 # ──────────────────────────────────────────────────────────────────────────────
 # DIM_CLIENT  ← ROOT CAUSE DU CRASH
 # ──────────────────────────────────────────────────────────────────────────────
@@ -444,7 +454,7 @@ def build_dimensions(cleaned_data: dict) -> dict:
     df_regions   = cleaned_data["regions"]
 
     # 1. Dimensions indépendantes
-    dim_temps   = build_dim_temps()
+    dim_temps = build_dim_temps(DIM_TEMPS_DATE_DEBUT, DIM_TEMPS_DATE_FIN)
     dim_region  = build_dim_region(df_regions)
     dim_produit = build_dim_produit(df_produits)
     dim_livreur = build_dim_livreur(df_commandes)
